@@ -1,0 +1,224 @@
+https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=TWS:00940:STOCK&from=1714003200&to=45273600
+https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=TWS:2330:STOCK&from=1714089600&to=45273600
+https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=TWS:07481U:STOCK&from=1714089600&to=45273600
+https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=TWS:00940:STOCK&from=1714089600&to=45273600
+https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=TWS:00940:STOCK&from=1677715200&to=45273600
+https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=TWS:2317:STOCK&from=1714089600&to=45273600
+https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=TWS:2317:STOCK&from=1714089600&to=45273600
+
+一天=86400秒
+https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=TWS:2330:STOCK&from=1684281600&to=1679616000
+
+19838=2024/04/24
+select dateadd(day,19839,'1969-12-31')
+select DATEDIFF(day,'2023-03-24','1969-12-31')
+
+1.3個點(越多越好)
+2.3~7禮拜
+3.越平坦越好
+
+var a = new List<double>() { 539, 536, 530, 533, 537, 538, 531, 535, 533, 527, 524, 517, 520, 520, 520, 518, 516, 520, 510, 505, 498.5, 495, 502, 502, 498, 499.5, 502,509,510,508,506,500,499.5,508,521};
+
+            var xyList = new List<xy>();
+
+            var b = new List<xo>();
+
+            for (var i = 1; i < a.Count -1 ; i++)
+            {
+                if (a[i] > a[i-1] && a[i] > a[i + 1])
+                {
+                    var xy = new xy();
+                    xy.x = i;
+                    xy.y = a[i];
+                    xyList.Add(xy);
+                }
+            }
+
+            var f = xyList.Last();
+
+            for (var i = xyList.Count -2; i >= 0; i--)
+            {
+                var d = Math.Atan2(f.y - xyList[i].y, f.x - xyList[i].x) * 180 / Math.PI;
+                if (b.Count != 0 && b.FirstOrDefault().o - d > 3d)
+                {
+                    var g = "超過了，跳過";
+                }
+                if (b.Count == 0 || Math.Abs(b.FirstOrDefault().o - d) <= 10d)
+                {
+                    b.Add(new xo() { x = xyList[i].x, o = d});
+                }
+            }
+			
+			
+			public class xy
+    {
+        public int x { get; set; }
+        public double y { get; set; }
+    }
+
+    public class xo
+    {
+        public int x { get; set; }
+        public double o { get; set; }
+    }
+	
+	 public static int orderID_B = 0;
+        public static int orderID_S = 0;
+        public static int sellStrategyID = 0;
+
+        public void order()
+        {
+            var sellStrategyID = AddSellStrategy();
+
+            var order_B = new Order_B()
+            {
+                orderID_B = ++orderID_B,
+                stockID = "2330",
+                price = 800.0m,
+                qty = 1000,
+                orderStates = 0,
+                sellStrategyID = sellStrategyID,
+            };
+        }
+
+        public int AddSellStrategy()
+        {
+            var sellStrategy = new SellStrategy()
+            {
+                sellStrategyID = ++sellStrategyID,
+                stockID = "2330",
+                qty = 1000,
+                checkMinPrice = true,
+                minPrice = 680.0m,
+                checkMaxPrice = true,
+                maxPrice = 1200.0m,
+                checkMovingPrice = true,
+                minute_P = 1,
+                priceType = 2,
+                priceRatio = 0.015m,
+                checkMovingQty = true,
+                minute_Q = 1,
+                qtyRatio = 0.015m,
+                checkCnt = 1,
+                orderStates = 0,
+                IsValid = false,
+            };
+
+            return sellStrategy.sellStrategyID;
+        }
+
+        public void confirmationOrder_B()
+        {
+            //接收委託回報
+            //修改委託狀態
+        }
+
+        public void confirmationOrderDeal()
+        {
+            //接收成交回報
+            //修改委託狀態、成交價、成交量(注意價穩機制)
+            //啟動觸賣策略
+        }
+
+        public void test()
+        {
+            var stockID = "2330";
+            var price = 750.1m;
+            var qty = 1000;
+            //取得股票行情
+            CheckSellStrategy(stockID, price, 1000); //別等待
+            Buy(); //別等待
+        }
+
+        public void CheckSellStrategy(string stockID, decimal price, int qty)
+        {
+            //取得這檔股票所有的價格策略
+            var SellStrategyList = new List<SellStrategy>();
+            foreach (var SellStrategy in SellStrategyList)
+            {
+                //判斷這邊再包一個function，別等待
+                if (SellStrategy.checkMinPrice && price <= SellStrategy.minPrice)
+                {
+                    Sell(stockID, qty);
+                    return;
+                }
+                if (SellStrategy.checkMaxPrice && price >= SellStrategy.maxPrice)
+                {
+                    Sell(stockID, qty);
+                    return;
+                }
+                var cnt = 0;
+                if (SellStrategy.checkMovingPrice)
+                {
+                    var kPrice = 0;//取得前?分鐘的價格
+                    var tmpPrice = (1-SellStrategy.priceRatio) * kPrice; //前?分鐘的價格*?%
+                    if (price <= tmpPrice)
+                    {
+                        cnt++;
+                    }
+                    if (SellStrategy.checkCnt <= cnt)
+                    {
+                        Sell(stockID, qty);
+                        return;
+                    }
+                }
+                if (SellStrategy.checkMovingQty)
+                {
+                    var kQty = 0;//取得前?分鐘的成交量
+                    var tmpQty = (1 - SellStrategy.qtyRatio) * kQty; //前?分鐘的成交量*?%
+                    if (qty <= tmpQty)
+                    {
+                        cnt++;
+                    }
+                    if (SellStrategy.checkCnt <= cnt)
+                    {
+                        Sell(stockID, qty);
+                        return;
+                    }
+                }
+
+            }
+        }
+
+        public void Sell(string stockID, decimal qty)
+        {
+
+        }
+
+        public void Buy()
+        {
+
+        }
+
+        public class Order_B
+        {
+            public int orderID_B { get; set; }
+            public string stockID { get; set; }
+            public decimal price { get; set; }
+            public int qty { get; set; }
+            public int orderStates { get; set; }
+            public decimal dealPrice { get; set; }
+            public int dealQty { get; set; }
+            public int sellStrategyID { get; set; }
+        }
+
+        public class SellStrategy
+        {
+            public int sellStrategyID { get; set; }
+            public string stockID { get; set; }
+            public int qty { get; set; }
+            public bool checkMinPrice { get; set; }
+            public decimal minPrice { get; set; }
+            public bool checkMaxPrice { get; set; }
+            public decimal maxPrice { get; set; }
+            public bool checkMovingPrice { get; set; }
+            public int minute_P { get; set; }
+            public int priceType { get; set; }
+            public decimal priceRatio { get; set; }
+            public bool checkMovingQty { get; set; }
+            public int minute_Q { get; set; }
+            public decimal qtyRatio { get; set; }
+            public int checkCnt { get; set; }
+            public int orderStates { get; set; }
+            public bool IsValid { get; set; }
+        }
